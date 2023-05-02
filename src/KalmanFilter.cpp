@@ -4,6 +4,7 @@
 
 #include "KalmanFilter.h"
 #include "Angles.h"
+#include "Logger.h"
 
 #include <math.h>
 #include <iostream>
@@ -14,7 +15,7 @@ KalmanFilter::KalmanFilter() {
     m_covariance.setIdentity();
     m_covariance *= 1E-5;
     
-    m_gyroVariance = 0.0001;
+    m_gyroVariance = 0.001;
     m_tagCovariance << 25.0, 0.0,
                        0.0, 9.0;
 
@@ -94,12 +95,16 @@ void KalmanFilter::run(double dt, double vl, double vr) {
 
 //    std::cout << "KF:: Q = \n" << Q << std::endl;
 
+    Logger::log("xEst", m_state(0));
+    Logger::log("yEst", m_state(1));
+    Logger::log("headingEst", m_state(2));
+
 }
 
 
 void KalmanFilter::updateWithGyro(double heading) {
 
-    std::cout << "Update with gyro\n";
+    //std::cout << "Update with gyro\n";
 
     // Measurement vector, z
     double z = heading;
@@ -124,7 +129,7 @@ void KalmanFilter::updateWithGyro(double heading) {
 
 void KalmanFilter::updateWithTag(double camX, double camZ, double tagX, double tagY) {
 
-    std::cout << "Update with tag\n";
+    //std::cout << "Update with tag\n";
 
     // Measurement vector, z
     Eigen::Vector2d z;
@@ -132,8 +137,11 @@ void KalmanFilter::updateWithTag(double camX, double camZ, double tagX, double t
 
     // Observation function h (already evaluated)
     Eigen::Vector2d h;
-    h << CAMERA_Y + m_state(1) + tagX * sin(m_state(2)) - tagY * cos(m_state(2)), // x
-         -CAMERA_X - m_state(0) + tagX * cos(m_state(2)) + tagY * sin(m_state(2)); // z
+    //h << CAMERA_Y + m_state(1) + tagX * sin(m_state(2)) - tagY * cos(m_state(2)), // x
+    //     -CAMERA_X - m_state(0) + tagX * cos(m_state(2)) + tagY * sin(m_state(2)); // z
+
+    h << CAMERA_Y + cos(m_state(2)) * (m_state(1) - tagY) + sin(m_state(2)) * (tagX - m_state(0)), // x
+         -CAMERA_X + cos(m_state(2)) * (tagX - m_state(0)) + sin(m_state(2)) * (tagY - m_state(1)); // z
 
     // The Jacobian matrix of h with respect to the state
     Eigen::Matrix<double, 2, 3> H;

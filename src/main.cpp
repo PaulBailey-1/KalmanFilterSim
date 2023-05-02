@@ -1,9 +1,12 @@
 #include <stdio.h>
-#include <Angles.h>
+#include <SFML/System/Clock.hpp>
 
-#include <KalmanFilter.h>
-#include <Robot.h>
+#include "Angles.h"
+#include "KalmanFilter.h"
+#include "Robot.h"
 #include "Logger.h"
+#include "Pose.h"
+#include "Display.h"
 
 int main() {
 	
@@ -15,28 +18,56 @@ int main() {
 	Logger logger;
 	logger.open("log.csv");
 
-	printf("Starting simulation\n");
-	while (true) {
+	Display display;
 
-		if (robot.run(0.02)) {
-			break;
+	sf::Clock clock;
+
+	double dt = 0.02;
+
+	bool simFinished = false;
+
+	while (clock.getElapsedTime().asSeconds() < 0.0);
+	clock.restart();
+
+	printf("Starting simulation\n");
+	while (display.isWindowOpen()) {
+
+		if (!simFinished) {
+			if (robot.run(dt)) {
+				simFinished = true;
+				printf("Simulation Finished\n");
+				//break;
+				continue;
+			}
+
+			kFilter.run(dt, robot.getLeftEncoder(), robot.getRightEncoder());
+
+			kFilter.updateWithGyro(robot.getGyroHeading());
+
+			if (robot.isTagValid()) {
+				kFilter.updateWithTag(robot.getCamX(), robot.getCamZ(), robot.getTagX(), robot.getTagY());
+				robot.tagUsed();
+			}
+
+			Pose error = kFilter.getPose() - robot.getPose();
+			Logger::log("X Error", error.x);
+			Logger::log("Y Error", error.y);
+			Logger::log("Theta Error", error.theta);
+
+			logger.nextLine();
 		}
 
-		//kFilter.run(0.02, robot.getLeftEncoder(), robot.getRightEncoder());
+		//double dt = clock.getElapsedTime().asSeconds();
+		while (clock.getElapsedTime().asSeconds() < dt);
+		clock.restart();
+		display.draw(robot.getPose(), kFilter.getPose());
 
-		//kFilter.updateWithGyro(robot.getGyroHeading());
-
-		//if (robot.isTagValid()) {
-		//	kFilter.updateWithTag(robot.getCamX(), robot.getCamZ(), robot.getTagX(), robot.getTagY());
-		//}
-
-
-		logger.nextLine();
 	}
 
-	logger.close();
+	printf("Robot - x:%f, y:%f, th:%f\n", robot.getPose().x, robot.getPose().y, robot.getPose().theta);
+	printf("Filter - x:%f, y:%f, th:%f\n", kFilter.getPose().x, kFilter.getPose().y, kFilter.getPose().theta);
 
-	printf("Stopped\n");
+	logger.close();
 
 	return 0;
 }

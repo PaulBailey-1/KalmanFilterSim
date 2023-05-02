@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Diplay.cpp" />
     <ClCompile Include="src\KalmanFilter.cpp" />
     <ClCompile Include="src\Logger.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -154,8 +155,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Angles.h" />
+    <ClInclude Include="include\Display.h" />
     <ClInclude Include="include\KalmanFilter.h" />
     <ClInclude Include="include\Logger.h" />
+    <ClInclude Include="include\Pose.h" />
     <ClInclude Include="include\Robot.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,12 +1,12 @@
 
 #include <vector>
 
-#include "Pose.h"
+#include "Utils.h"
 
 class Robot {
 public:
 
-	Robot();
+	Robot(double robotWidth, double kl, double kr, double camX, double camY);
 
 	bool run(double dt);
 	
@@ -26,9 +26,9 @@ public:
 
 private:
 
-	const double ROBOT_WIDTH = 21.0;
-	const double KL = 0.034628583, KR = 0.034628583;
-	const double CAMERA_X = 20.0, CAMERA_Y = 5.0;
+	double ROBOT_WIDTH;
+	double KL, KR;
+	double CAMERA_X, CAMERA_Y;
 
 	double m_time{0.0};
 
@@ -37,6 +37,8 @@ private:
 	};
 
 	std::vector<DriveCmd> m_driveCmds;
+
+	std::vector<Point> m_tags;
 
 	int m_driveStep{0};
 	double m_stepTime{-0.00001};
@@ -55,5 +57,6 @@ private:
 	double m_camZ;
 	double m_tagX;
 	double m_tagY;
+	int m_tagID;
 
 };

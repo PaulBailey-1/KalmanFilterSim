@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "Pose.h"
+#include "Utils.h"
 
 #include "Eigen/Dense"
 
@@ -11,7 +11,7 @@
 class KalmanFilter {
 public:
 
-    KalmanFilter();
+    KalmanFilter(double robotWidth, double kl, double kr, double camX, double camY);
 
     void init(double x, double y, double theta);
 
@@ -27,12 +27,13 @@ public:
     double getTheta() {return m_state(2);}
 
     Pose getPose() { return { m_state(0), m_state(1), m_state(2) }; }
+    Eigen::Matrix3d getCov() { return m_covariance; }
 
 private:
 
-    const double ROBOT_WIDTH = 21.0;
-    const double KL = 0.034628583, KR = 0.034628583;
-    const double CAMERA_X = 20.0, CAMERA_Y = 5.0;
+    double ROBOT_WIDTH;
+    double KL, KR;
+    double CAMERA_X, CAMERA_Y;
 
     // The estimated state, x = {fieldX, fieldY, theta}
     Eigen::Vector3d m_state;

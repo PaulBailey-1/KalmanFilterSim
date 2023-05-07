@@ -9,7 +9,13 @@
 #include <math.h>
 #include <iostream>
 
-KalmanFilter::KalmanFilter() {
+KalmanFilter::KalmanFilter(double robotWidth, double kl, double kr, double camX, double camY) {
+
+    ROBOT_WIDTH = robotWidth;
+    KL = kl;
+    KR = kr;
+    CAMERA_X = camX;
+    CAMERA_Y = camY;
 
     m_state = {0.0, 0.0, 0.0};
     m_covariance.setIdentity();
@@ -56,22 +62,28 @@ void KalmanFilter::run(double dt, double vl, double vr) {
 
     static double klrSum = KL * KL + KR * KR;
     static double krlDiff = KR * KR - KL * KL;
+    //double e = 0.3;
 
     if (std::abs(vl - vr) < 10) { // Traveling in straight line
         double d = v * dt;
-            m_processNoise << klrSum / 4, (d * krlDiff) / (4 * ROBOT_WIDTH), krlDiff / (2 * ROBOT_WIDTH),
-                        0, (d * d * klrSum) / (3 * ROBOT_WIDTH * ROBOT_WIDTH), (d * klrSum) / (2 * ROBOT_WIDTH * ROBOT_WIDTH),
-                        0, 0, klrSum / (ROBOT_WIDTH * ROBOT_WIDTH);
+        //m_processNoise.setZero();
+        //m_processNoise(0, 0) = pow(d * e / 10, 2);
+        //m_processNoise(1, 1) = pow(d * e, 2);
+        m_processNoise << klrSum / 4, (d * krlDiff) / (4 * ROBOT_WIDTH), krlDiff / (2 * ROBOT_WIDTH),
+                    0, (d * d * klrSum) / (3 * ROBOT_WIDTH * ROBOT_WIDTH), (d * klrSum) / (2 * ROBOT_WIDTH * ROBOT_WIDTH),
+                    0, 0, klrSum / (ROBOT_WIDTH * ROBOT_WIDTH);
 
-            m_processNoise(1,0) = m_processNoise(0,1);
-            m_processNoise(2,0) = m_processNoise(0,2);
-            m_processNoise(2,1) = m_processNoise(1,2);
-            m_processNoise *= std::abs(d);
+        m_processNoise(1,0) = m_processNoise(0,1);
+        m_processNoise(2,0) = m_processNoise(0,2);
+        m_processNoise(2,1) = m_processNoise(1,2);
+        m_processNoise *= std::abs(d);
     } else { // Rotating in place
         double a = omega * dt;
-        m_processNoise << (ROBOT_WIDTH * klrSum * std::abs(sin(a) + a)) / 16, m_processNoise(0,1), m_processNoise(0,2),
-                            m_processNoise(1,0), klrSum * (ROBOT_WIDTH / 2) * std::abs((a - sin(a)) / 2), m_processNoise(1,2),
-                            m_processNoise(2,0), m_processNoise(2,1), (std::abs(a) / (2 * ROBOT_WIDTH)) * klrSum;
+        //m_processNoise.setZero();
+        //m_processNoise(2, 2) = pow(a * e, 2);
+        m_processNoise << (ROBOT_WIDTH * klrSum * std::abs(sin(a) + a)) / 16, 0, 0,
+                            0, klrSum * (ROBOT_WIDTH / 2) * std::abs((a - sin(a)) / 2), 0,
+                            0, 0, (std::abs(a) / (2 * ROBOT_WIDTH)) * klrSum;
     }
 
     double rotateBy = -m_state(2);
@@ -84,12 +96,16 @@ void KalmanFilter::run(double dt, double vl, double vr) {
     
     // Define the jacobian of f, the extrapolation function
 
-    Eigen::Matrix3d F; 
-    F <<    1, 0, -v * dt * sin(theta),
-            0, 1, v * dt * cos(theta),
+    Eigen::Matrix3d F;
+    F <<    1, 0, abs(-v * dt * sin(m_state(2))),
+            0, 1, abs(v * dt * cos(m_state(2))),
             0, 0, 1;
     
+    double p11 = m_covariance(1, 1);
     m_covariance = F * m_covariance * F.transpose() + m_processNoise;
+    if (m_covariance(1, 1) - p11 < 0) {
+        printf("");
+    }
 
     // std::cout << "KF:: new covariance = \n" << m_covariance << std::endl;
 
@@ -98,6 +114,9 @@ void KalmanFilter::run(double dt, double vl, double vr) {
     Logger::log("xEst", m_state(0));
     Logger::log("yEst", m_state(1));
     Logger::log("headingEst", m_state(2));
+    Logger::log("p00", m_covariance(0, 0));
+    Logger::log("p11", m_covariance(1, 1));
+    Logger::log("p22", m_covariance(2, 2));
 
 }
 
@@ -137,9 +156,6 @@ void KalmanFilter::updateWithTag(double camX, double camZ, double tagX, double t
 
     // Observation function h (already evaluated)
     Eigen::Vector2d h;
-    //h << CAMERA_Y + m_state(1) + tagX * sin(m_state(2)) - tagY * cos(m_state(2)), // x
-    //     -CAMERA_X - m_state(0) + tagX * cos(m_state(2)) + tagY * sin(m_state(2)); // z
-
     h << CAMERA_Y + cos(m_state(2)) * (m_state(1) - tagY) + sin(m_state(2)) * (tagX - m_state(0)), // x
          -CAMERA_X + cos(m_state(2)) * (tagX - m_state(0)) + sin(m_state(2)) * (tagY - m_state(1)); // z
 

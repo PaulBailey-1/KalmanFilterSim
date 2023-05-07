@@ -7,3 +7,7 @@ struct Pose {
 		return { x - other.x, y - other.y, theta - other.theta };
 	}
 };
+
+struct Point {
+	double x, y;
+};

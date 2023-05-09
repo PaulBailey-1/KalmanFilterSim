@@ -9,8 +9,8 @@
 #include "Display.h"
 
 const double ROBOT_WIDTH = 21.0;
-const double KL = sqrt(0.004742407), KR = sqrt(0.006080527);
-//const double KL = sqrt(0.1), KR = sqrt(0.1);
+//const double KL = sqrt(0.004742407), KR = sqrt(0.006080527);
+const double KL = sqrt(0.1), KR = sqrt(0.1);
 const double CAMERA_X = 0.0, CAMERA_Y = 0.0;
 
 int main() {
@@ -57,7 +57,7 @@ int main() {
 			Pose error = kFilter.getPose() - robot.getPose();
 			Logger::log("X Error", error.x);
 			Logger::log("Y Error", error.y);
-			Logger::log("Theta Error", error.theta);
+			Logger::log("Theta Error", gsu::angles::to_degrees(error.theta));
 			Logger::log("Pos Error", sqrt(error.x * error.x + error.y * error.y));
 
 		}

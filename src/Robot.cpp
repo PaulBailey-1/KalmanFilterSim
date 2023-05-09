@@ -56,7 +56,7 @@ bool Robot::run(double dt) {
 
 	static std::random_device rd;
 	static std::default_random_engine generator;
-	static int seed = 9872;
+	static int seed = 9272;
 	seed++;
 	generator.seed(seed);
 
@@ -70,8 +70,12 @@ bool Robot::run(double dt) {
 	std::normal_distribution<double> rightEncoderDistribution(dr, sqrt(abs(KR * KR * dr)));
 	m_vr = rightEncoderDistribution(generator) / dt;
 
-	std::normal_distribution<double> gyroDistribution(m_heading, sqrt(0.001));
+	std::normal_distribution<double> gyroDistribution(m_heading, sqrt(3e-6));
 	m_gyroHeading = gyroDistribution(generator);
+
+	if (m_y > 70 && m_x < 50) {
+		printf("");
+	}
 
 	double camFX = 0.0;
 	double camFY = 0.0;
@@ -82,7 +86,7 @@ bool Robot::run(double dt) {
 		double d = sqrt(pow(tag.x - m_x, 2) + pow(tag.y - m_y, 2));
 		a = -atan2(tag.y - m_y, tag.x - m_x) + m_heading;
 
-		if (abs(a) < PI / 4) {
+		if (gsu::angles::normalize_angle_positive(atan2(tag.y - m_y, tag.x - m_x) - m_heading) < PI / 4) {
 			m_tagValid = true;
 			m_tagID = i;
 
@@ -95,9 +99,12 @@ bool Robot::run(double dt) {
 			//m_camX = CAMERA_Y + cos(m_heading) * (m_y - m_tagY) + sin(m_heading) * (m_tagX - m_x); // x
 			//m_camZ = -CAMERA_X + cos(m_heading) * (m_tagX - m_x) + sin(m_heading) * (m_tagY - m_y); // z
 
-			std::normal_distribution<double> camXDistribution(m_camX, sqrt(25.0));
+			double xVar = (d / 150) * 4 + 1;
+			double zVar = (d / 150) * 2 + 1;
+
+			std::normal_distribution<double> camXDistribution(m_camX, xVar);
 			m_camX = camXDistribution(generator);
-			std::normal_distribution<double> camZDistribution(m_camZ, sqrt(9.0));
+			std::normal_distribution<double> camZDistribution(m_camZ, zVar);
 			m_camZ = camZDistribution(generator);
 
 			camFX = m_tagX - cos(m_heading) * (CAMERA_X + m_camZ) + sin(m_heading) * (CAMERA_Y - m_camX);

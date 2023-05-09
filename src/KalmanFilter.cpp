@@ -21,7 +21,7 @@ KalmanFilter::KalmanFilter(double robotWidth, double kl, double kr, double camX,
     m_covariance.setIdentity();
     m_covariance *= 1E-5;
     
-    m_gyroVariance = 0.001;
+    m_gyroVariance = 3e-6;
     m_tagCovariance << 25.0, 0.0,
                        0.0, 9.0;
 
@@ -52,7 +52,7 @@ void KalmanFilter::run(double dt, double vl, double vr) {
     m_state(0) += dx;
     m_state(1) += dy;
 
-    m_state(2) += omega * dt;
+    //m_state(2) += omega * dt;
 
     // std::cout << "KF:: new state = \n" << m_state << std::endl;
 
@@ -64,7 +64,7 @@ void KalmanFilter::run(double dt, double vl, double vr) {
     static double krlDiff = KR * KR - KL * KL;
     //double e = 0.3;
 
-    if (std::abs(vl - vr) < 10) { // Traveling in straight line
+    if (std::abs(vl - vr) < 30) { // Traveling in straight line
         double d = v * dt;
         //m_processNoise.setZero();
         //m_processNoise(0, 0) = pow(d * e / 10, 2);
@@ -77,6 +77,9 @@ void KalmanFilter::run(double dt, double vl, double vr) {
         m_processNoise(2,0) = m_processNoise(0,2);
         m_processNoise(2,1) = m_processNoise(1,2);
         m_processNoise *= std::abs(d);
+
+        //m_processNoise(2, 2) = 0.00000000;
+
     } else { // Rotating in place
         double a = omega * dt;
         //m_processNoise.setZero();
@@ -84,6 +87,8 @@ void KalmanFilter::run(double dt, double vl, double vr) {
         m_processNoise << (ROBOT_WIDTH * klrSum * std::abs(sin(a) + a)) / 16, 0, 0,
                             0, klrSum * (ROBOT_WIDTH / 2) * std::abs((a - sin(a)) / 2), 0,
                             0, 0, (std::abs(a) / (2 * ROBOT_WIDTH)) * klrSum;
+
+        m_processNoise(2, 2) = 0.0001;
     }
 
     double rotateBy = -m_state(2);
@@ -101,9 +106,9 @@ void KalmanFilter::run(double dt, double vl, double vr) {
             0, 1, abs(v * dt * cos(m_state(2))),
             0, 0, 1;
     
-    double p11 = m_covariance(1, 1);
+    double p22 = m_covariance(2, 2);
     m_covariance = F * m_covariance * F.transpose() + m_processNoise;
-    if (m_covariance(1, 1) - p11 < 0) {
+    if (m_covariance(2, 2) - p22 < 0) {
         printf("");
     }
 
@@ -161,8 +166,16 @@ void KalmanFilter::updateWithTag(double camX, double camZ, double tagX, double t
 
     // The Jacobian matrix of h with respect to the state
     Eigen::Matrix<double, 2, 3> H;
-    H << 0, 1, tagX * cos(m_state(2)) + tagY * sin(m_state(2)),
-         1, 0, -tagX * sin(m_state(2)) + tagY * cos(m_state(2));
+    H << -sin(m_state(2)), cos(m_state(2)), -sin(m_state(2)) * (m_state(1) - tagY) + cos(m_state(2)) * (tagX - m_state(0)),
+         -cos(m_state(2)), -sin(m_state(2)), -sin(m_state(2)) * (tagX - m_state(0)) + cos(m_state(2)) * (tagY - m_state(1));
+
+    double d = sqrt(camX * camX + camZ * camZ);
+    double xVar = (d / 150) * 4 + 1;
+    xVar *= xVar;
+    double zVar = (d / 150) * 2 + 1;
+    zVar *= zVar;
+    m_tagCovariance << xVar, 0,
+                       0, zVar;
 
     Eigen::Matrix<double, 3, 2> K = m_covariance * H.transpose() * (H * m_covariance * H.transpose() + m_tagCovariance).inverse();
 

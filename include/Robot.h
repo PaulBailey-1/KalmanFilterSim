@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "Utils.h"
+#include "Angles.h"
 
 class Robot {
 public:

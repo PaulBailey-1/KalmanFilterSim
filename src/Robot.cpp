@@ -55,10 +55,10 @@ bool Robot::run(double dt) {
 	m_heading += target.omega * dt;
 
 	static std::random_device rd;
-	static std::default_random_engine generator;
-	static int seed = 9272;
-	seed++;
-	generator.seed(seed);
+	static std::default_random_engine generator(rd());
+	//static int seed = 9272;
+	//seed++;
+	//generator.seed(seed);
 
 	m_vl = target.vx - target.omega * ROBOT_WIDTH / 2;
 	double dl = m_vl * dt;
